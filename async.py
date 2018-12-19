@@ -54,6 +54,11 @@ def label(l, *, interrupt=False):
 #
 # All identical!  No evidence of a yield point at entering or exiting
 # an async function ^W^W coroutine -- only at the actual sleep() inside.
+#
+# This and all other quoted results done with:
+#   $ uname -sv; python3.7 -V
+#   Linux #1 SMP Debian 4.18.20-2 (2018-11-23)
+#   Python 3.7.2rc1
 
 @label('1', interrupt=True)
 async def demo1():

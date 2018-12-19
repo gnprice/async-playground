@@ -53,6 +53,11 @@
  *    `await foo(...)` isn't syntax, rather `await EXPR` is.  And if
  *    the caller has gone and attached a whole bunch of continuations
  *    to the promise, it doesn't make sense to "just return" to them.
+ *
+ * All quoted results below are with:
+ *   $ uname -sv; node --version
+ *   Linux #1 SMP Debian 4.18.20-2 (2018-11-23)
+ *   v8.14.0
  */
 
 function sleep(duration) {
