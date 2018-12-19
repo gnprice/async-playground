@@ -1,6 +1,47 @@
 #!/usr/bin/node
-// Usage:
-//   for i in {1..25}; do ./async.js; done | sort | uniq -c
+/**
+ * Usage:
+ *   for i in {1..25}; do ./async.js; done | sort | uniq -c
+ *
+ * Demonstrates some of the behavior of JS's cooperative multitasking.
+ *
+ * Mostly confirmed what I thought I understood, but there was one
+ * behavior which surprised me, and I had to think harder but I
+ * believe I now understand.  If you take a chunk of an async function
+ * and factor it out into a new async function, calling with `await`,
+ * there's an asymmetry: no yield point is created at *entry* to the
+ * new function, but a yield point *is* created at *exit*.
+ *
+ * I think with typical patterns this is much less likely to bite you
+ * than a yield point at entry, even if totally unaware of this
+ * possibility -- but it seems like something to keep in mind.
+ *
+ * Here's why this happens, AIUI:
+ *
+ *  * When `await foo()` is evaluated, that starts by evaluating
+ *    `foo()`, calling the function; and that enters the function
+ *    body and starts running just as if it were a normal function.
+ *    There's no yield.
+ *
+ *  * When the execution of `foo` hits an `await`, it stops, attaches
+ *    to that promise a `then` callback with the current continuation,
+ *    and then returns a promise of its own result.  The caller which
+ *    had `await foo()` then does the same thing to that promise, on
+ *    up the chain to the event loop.  IOW, the code yields.
+ *
+ *  * Eventually the innermost promise resolves, perhaps, and the
+ *    event loop comes back to that continuation and takes the
+ *    innermost of these async functions farther.  It might get to
+ *    another `await` and do the same thing; or at some point it might
+ *    `return`, or fall off the end of the function.  (Or throw an
+ *    exception, but let's bracket that.)
+ *
+ *  * Here's the thing: when it does get to a `return`, that just
+ *    *resolves the promise*... which does not mean calling the
+ *    continuation.  It just means *scheduling* it to be called, by
+ *    the event loop.  The actual direct control-flow return, then,
+ *    goes straight back to the event loop.  IOW, the code yields again.
+ */
 
 function sleep(duration) {
   return new Promise(resolve => setTimeout(resolve, duration));
