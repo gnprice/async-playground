@@ -41,6 +41,18 @@
  *    continuation.  It just means *scheduling* it to be called, by
  *    the event loop.  The actual direct control-flow return, then,
  *    goes straight back to the event loop.  IOW, the code yields again.
+ *
+ *  * When thinking about the more general Promise API that this
+ *    async/await functionality is built on, the yield point at
+ *    function exit is kind of inevitable -- because a Promise can
+ *    have multiple continuations attached with "then".  Within the
+ *    normal `await foo(...)` pattern where the result of the function
+ *    call is immediately awaited on, I think you could reasonably
+ *    have a semantics where an async function's `return` means
+ *    jumping directly to its caller's continuation... but in JS
+ *    `await foo(...)` isn't syntax, rather `await EXPR` is.  And if
+ *    the caller has gone and attached a whole bunch of continuations
+ *    to the promise, it doesn't make sense to "just return" to them.
  */
 
 function sleep(duration) {
