@@ -1,18 +1,26 @@
 #!/usr/bin/node
+// Usage:
+//   for i in {1..25}; do ./async.js; done | sort | uniq -c
 
 function sleep(duration) {
   return new Promise(resolve => setTimeout(resolve, duration));
 }
 
-const lines = [];
+const messages = [];
 
 function log(msg) {
   // Possibly console.log isn't synchronous?
   // To avoid that possible confounder, just push to a list.
-  lines.push(msg);
+  messages.push(msg);
 }
 
-let flag = true;
+function consume() {
+  const out = messages.join(' ');
+  messages.length = 0;
+  return out;
+}
+
+let flag = false;
 let done = false;
 
 async function freq() {
@@ -55,8 +63,9 @@ async function demo2bc() {
   say('c');
 }
 
-// output:
-// sometimes a b in! c d in!
+// output: one of, approx. percentages:
+//  25%  a b in! c d
+//  75%  a b in! c d in!
 async function demo3() {
   say('a');
   say('b');
@@ -65,8 +74,12 @@ async function demo3() {
   say('d');
 }
 
-// output:
-// sometimes a b in! c in! d
+// output: one of, approx. percentages:
+//  60%  a b in! c d
+//  40%  a b in! c in! d
+//
+// Seems highly correlated with demo3; one n=25 sample had the extra
+// "in!" for neither in 6, demo3 only in 6, both in 13.
 async function demo4() {
   say('a');
   await demo4bc();  // Same refactoring.
@@ -79,24 +92,18 @@ async function demo4bc() {
   say('c');
 }
 
+async function run(label, demo) {
+  flag = true;
+  await demo();
+  console.log(`${label}: ${consume()}`);
+}
+
 async function main() {
   freq();
-
-  log('--');
-  await demo1();
-  log('--');
-  await demo2();
-  log('--');
-  await demo3();
-  log('--');
-  await demo4();
-  log('--');
-
+  for (const e of [demo1, demo2, demo3, demo4].entries()) {
+    await run(e[0]+1, e[1]);
+  }
   done = true;
-  await sleep(100);
-
-  const out = lines.join('\n');
-  console.log(out);
 }
 
 main();
