@@ -1,7 +1,7 @@
 #!/usr/bin/node
 /**
  * Usage:
- *   for i in {1..25}; do ./async.js; done | sort | uniq -c
+ *   for i in {1..40}; do ./async.js; done | sort | uniq -c
  *
  * Demonstrates some of the behavior of JS's cooperative multitasking.
  *
@@ -133,6 +133,61 @@ async function demo4bc() {
   say('c');
 }
 
+// $ for i in {1..1000}; do ./async.js; done | sort | uniq -c
+// 214 deep1: 3 2 1 0 in! x3 x2 x1 x0 0 in! 1 in! 2 in! 3
+//  18 deep1: 3 2 1 0 x3 in! x2 x1 x0 0 in! 1 in! 2 in! 3
+//   6 deep1: 3 2 1 0 x3 x2 in! x1 x0 0 in! 1 in! 2 in! 3
+//   5 deep1: 3 2 1 0 x3 x2 x1 in! x0 0 in! 1 in! 2 in! 3
+// 738 deep1: 3 2 1 0 x3 x2 x1 x0 in! 0 in! 1 in! 2 in! 3
+//  19 deep1: 3 2 1 0 x3 x2 x1 x0 in! 0 in! 1 in! 2 in! 3 in!
+async function demoDeep1(ttl=3) {
+  say(ttl);
+  sleep(0).then(() => log(`x${ttl}`));
+  if (ttl > 0) {
+    await demoDeep1(ttl-1);
+  }
+  await sleep(0);
+  say(ttl);
+}
+
+// $ for i in {1..100}; do ./async.js; done | sort | uniq -c
+//   7 deep2: 3 2 1 0 in! x0 0 in! x1 1 in! x2 2 x3 in! 3
+//  10 deep2: 3 2 1 0 in! x0 0 in! x1 1 x2 in! 2 x3 in! 3
+//   4 deep2: 3 2 1 0 x0 in! 0 in! x1 1 in! x2 2 x3 in! 3
+//   2 deep2: 3 2 1 0 x0 in! 0 in! x1 1 x2 in! 2 x3 in! 3
+//   1 deep2: 3 2 1 0 x0 in! 0 in! x1 1 x2 in! 2 x3 in! 3 in!
+//   3 deep2: 3 2 1 0 x0 in! 0 x1 in! 1 x2 in! 2 in! x3 3 in!
+//  73 deep2: 3 2 1 0 x0 in! 0 x1 in! 1 x2 in! 2 x3 in! 3
+async function demoDeep2(ttl=3) {
+  say(ttl);
+  if (ttl > 0) {
+    await demoDeep2(ttl-1);
+  }
+  sleep(0).then(() => log(`x${ttl}`));
+  await sleep(0);
+  say(ttl);
+}
+
+// output: b a c
+async function demoEager() {
+  const p = (async function() {
+    log('b');
+    return 'c';
+  })();
+  log('a');
+  log(await p);
+}
+
+const demos = new Map(Object.entries({
+  1: demo1,
+  2: demo2,
+  3: demo3,
+  4: demo4,
+  deep1: demoDeep1,
+  deep2: demoDeep2,
+  eager: demoEager,
+}));
+
 async function run(label, demo) {
   flag = true;
   await demo();
@@ -141,8 +196,8 @@ async function run(label, demo) {
 
 async function main() {
   freq();
-  for (const e of [demo1, demo2, demo3, demo4].entries()) {
-    await run(e[0]+1, e[1]);
+  for (const label of 'eager 3 deep2'.split(' ')) {
+    await run(label, demos.get(label));
   }
   done = true;
 }
