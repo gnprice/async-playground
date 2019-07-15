@@ -102,6 +102,84 @@ async def demo4bc():
     say('c')
 
 
+@label('compose-gen')
+async def demo_compose_gen():
+    '''
+    Calling async generators requires very specific placement of `await`.
+    '''
+    async def g():
+        say('g0')
+        yield 1
+        say('g1')
+        yield 2
+        say('g2')
+
+    async def f():
+        say('f')
+        gg = g()
+        say('f')
+        # An `await` here is an error:
+        #   TypeError: object async_generator can't be used in 'await' expression
+        return gg
+
+    # OTOH the `await` here is required, else:
+    #   TypeError: 'async for' requires an object with __aiter__ method, got coroutine
+    async for x in await f():
+        say(x)
+
+
+@label('compose-base')
+async def demo_compose_base():
+    '''
+    Calling an async function can require a double `await`.
+
+    To be read in comparison with compose-gen.
+    '''
+    # Exact same g, except returns a genexp instead of being a generator.
+    # (Same thing happens if returns another iterable, like a list `[1, 2]`.)
+    async def g():
+        say('g')
+        return (i for i in [1, 2])
+
+    # Exact same f verbatim.  E.g. perhaps we want a single implementation of
+    # some middleware f to work with both both kinds of g.
+    async def f():
+        say('f')
+        gg = g()
+        say('f')
+        # An `await` here would break if g is an async generator,
+        # as in compose-gen above.
+        return gg
+
+    # ... Now *two* layers of `await` are required at the ultimate caller.
+    # With just one, we get:
+    #   TypeError: 'coroutine' object is not iterable
+    for x in await(await f()):
+        say(x)
+
+    # Alternatively, `async for x in await f()` produces:
+    #   TypeError: 'async for' requires an object with __aiter__ method, got coroutine
+
+
+@label('compose-syncgen')
+async def demo_compose_syncgen():
+    '''
+    Synchronous analogue of compose-gen and compose-base, for comparison.
+    '''
+    def g():
+        say('g')
+        yield 1
+        yield 2
+    def f():
+        say('f')
+        gg = g()
+        say('f')
+        return gg
+
+    for x in f():
+        say(x)
+
+
 @label('task1')
 async def demo_task_stall():
     '''
